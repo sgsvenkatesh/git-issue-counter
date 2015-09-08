@@ -55,7 +55,11 @@ function fetchIssues(thisForm, event){
     $(".results-container").hide();
 
     var el = document.createElement('a');
-    el.href = thisForm['repoUrl'].value;
+    el.href = thisForm['repoUrl'].value.trim();
+    if (!(el.hostname && (el.hostname == "www.github.com" || el.hostname == "github.com"))) {
+        alert("Enter a valid GitHub Repository");
+        return;
+    }
     var pathNameArray = el.pathname.split("/"); //Array of url pathparams
 
     //time (in hours) since which the issues are being fetched
