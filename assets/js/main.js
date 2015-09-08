@@ -47,6 +47,7 @@ function populateTable(data){
 
 function fetchIssues(thisForm, event){
     event.preventDefault();
+    $(".results-container").hide();
 
     var el = document.createElement('a');
     el.href = thisForm['repoUrl'].value;
@@ -55,7 +56,7 @@ function fetchIssues(thisForm, event){
     var sinceTimeArray = [0, 24, 7*24];
     var countArray = [], counter = 0;
 
-    sinceTimeArray.forEach(function(sinceTime){
+    sinceTimeArray.forEach(function(sinceTime, idx){
         var params = {
             "since" : getSinceTimeInISO(sinceTime)
         };
@@ -63,28 +64,27 @@ function fetchIssues(thisForm, event){
         $(".loader").show();
         makeAjax(pathNameArray[1], pathNameArray[2], params, function(data){
             if(!data){
-                countArray[counter] = 0;
+                countArray[idx] = 0;
             }
 
             if(params.since == 0) {
-                countArray[counter] = data["open_issues_count"];
-                console.log(countArray[counter]);
+                countArray[idx] = data["open_issues_count"];
+                console.log(countArray[idx]);
             } else {
-                countArray[counter] = validDataCount(data, params.since);
-                console.log(countArray[counter]);
+                countArray[idx] = validDataCount(data, params.since);
+                console.log(countArray[idx]);
             }
 
-            if(counter == (sinceTimeArray.length - 1)){
+            if(idx == (sinceTimeArray.length - 1)){
                 $(".loader").fadeOut(100, function(){
                     populateTable({
                         "all": countArray[0],
                         "lastDay": countArray[1],
-                        "lastWeekButNotLastDay": countArray[2] - countArray[1],
-                        "allButNotLastWeek": countArray[0] - countArray[2]
+                        "lastWeekButNotLastDay": parseInt(countArray[2],10) - parseInt(countArray[1],10),
+                        "allButNotLastWeek": parseInt(countArray[0],10) - parseInt(countArray[2],10)
                     });
                 });
             }
-            counter++;
         });
     });
 }
