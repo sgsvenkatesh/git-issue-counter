@@ -49,6 +49,13 @@ function populateTable(data){
     $(".results-container").fadeIn();
 }
 
+function checkURLValidity(urlHostname){
+    if (!(urlHostname && (urlHostname == "www.github.com" || urlHostname == "github.com"))) {
+        return false;
+    }
+    return true;
+}
+
 // on form submit function
 function fetchIssues(thisForm, event){
     event.preventDefault();
@@ -56,10 +63,13 @@ function fetchIssues(thisForm, event){
 
     var el = document.createElement('a');
     el.href = thisForm['repoUrl'].value.trim();
-    if (!(el.hostname && (el.hostname == "www.github.com" || el.hostname == "github.com"))) {
+
+    // Checking if URL is valid
+    if(!checkURLValidity(el.hostname)){
         alert("Enter a valid GitHub Repository");
         return;
     }
+
     var pathNameArray = el.pathname.split("/"); //Array of url pathparams
 
     //time (in hours) since which the issues are being fetched
