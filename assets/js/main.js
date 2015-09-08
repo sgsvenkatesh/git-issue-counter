@@ -8,6 +8,7 @@ function makeAjax(repoOwner, repoName, params, callback){
         url = "https://api.github.com/repos/" + repoOwner + "/" + repoName;
         params = {};
     } else {
+        // github returns all issues created or updated after the since timestamp
         url = "https://api.github.com/repos/" + repoOwner + "/" + repoName + "/issues";
     }
     $.ajax({
@@ -23,6 +24,7 @@ function makeAjax(repoOwner, repoName, params, callback){
     });
 }
 
+// coverts time in hours to ISO format
 function getSinceTimeInISO(fromTimeInHours){
     if(fromTimeInHours) {
         var sinceTimeStamp = ($.now() - fromTimeInHours * 60 * 60 * 1000);
@@ -32,6 +34,8 @@ function getSinceTimeInISO(fromTimeInHours){
     }
 }
 
+// filter out issues which are updated after since time and get issues which are created
+// before since time
 function validDataCount(data, sinceTime){
     return data.filter(function(obj){
         return new Date(obj["created_at"]).getTime() > new Date(sinceTime).getTime();
@@ -45,15 +49,17 @@ function populateTable(data){
     $(".results-container").fadeIn();
 }
 
+// on form submit function
 function fetchIssues(thisForm, event){
     event.preventDefault();
     $(".results-container").hide();
 
     var el = document.createElement('a');
     el.href = thisForm['repoUrl'].value;
-    var pathNameArray = el.pathname.split("/");
+    var pathNameArray = el.pathname.split("/"); //Array of url pathparams
 
-    var sinceTimeArray = [0, 24, 7*24];
+    //time (in hours) since which the issues are being fetched
+    var sinceTimeArray = [0, 24, 7*24]; // 0 implies all issues
     var countArray = [], counter = 0;
 
     sinceTimeArray.forEach(function(sinceTime, idx){
@@ -68,7 +74,7 @@ function fetchIssues(thisForm, event){
             }
 
             if(params.since == 0) {
-                countArray[idx] = data["open_issues_count"];
+                countArray[idx] = data["open_issues_count"]; //fetching all open issues count
                 console.log(countArray[idx]);
             } else {
                 countArray[idx] = validDataCount(data, params.since);
