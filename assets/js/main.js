@@ -2,24 +2,22 @@
  * Created by sgsvenkatesh on 9/7/15.
  */
 
-function makeAjax(repoOwner, repoName, params, callback){
-    var url;
-    if(params.since == 0) {
-        url = "https://api.github.com/repos/" + repoOwner + "/" + repoName;
-        params = {};
-    } else {
-        // github returns all issues created or updated after the since timestamp
-        url = "https://api.github.com/repos/" + repoOwner + "/" + repoName + "/issues";
-    }
+var callCounter = 0, trackCounter = 0;
+
+function makeAjax(repoConstants, params, callback, callbackParams){
+
+    var url = "https://api.github.com/repos/" + repoConstants.repoOwner + "/" + repoConstants.repoName + "/issues";
+    callCounter++;
+
     $.ajax({
         url: url,
         data: params,
         crossDomain: true,
         success: function (data, status, jqXHR) {
-            callback(data);
+            callback(data, callbackParams);
         },
         error: function (jqXHR, status) {
-            callback(null);
+            callback(null, callbackParams);
         }
     });
 }
@@ -36,9 +34,13 @@ function getSinceTimeInISO(fromTimeInHours){
 
 // filter out issues which are updated after since time and get issues which are created
 // before since time
-function validDataCount(data, sinceTime){
+function filterForCreateDateAndOnlyIssues(data, sinceTime, idx){
     return data.filter(function(obj){
-        return new Date(obj["created_at"]).getTime() > new Date(sinceTime).getTime();
+        if(idx == 0) {
+            return !obj['pull_request'];
+        } else {
+            return !obj['pull_request'] && (new Date(obj["created_at"]).getTime() > new Date(sinceTime).getTime());
+        }
     }).length;
 }
 
@@ -50,10 +52,42 @@ function populateTable(data){
 }
 
 function checkURLValidity(urlHostname){
-    if (!(urlHostname && (urlHostname == "www.github.com" || urlHostname == "github.com"))) {
-        return false;
+    if(urlHostname == "www.github.com" || urlHostname == "github.com"){
+        return true;
     }
-    return true;
+    return false;
+}
+
+function callbackOnSuccess(data, callbackParams){
+    var countArray = callbackParams.countArray,
+        idx = callbackParams.idx,
+        repoConstants = callbackParams.repoConstants,
+        params = callbackParams.params,
+        sinceTimeArray = callbackParams.sinceTimeArray;
+
+    if(!data){
+        countArray[idx] = 0;
+    } else {
+        trackCounter++;
+        countArray[idx] += filterForCreateDateAndOnlyIssues(data, params.since, idx);
+        console.log(countArray[idx]);
+
+        if(data.length == params.per_page){
+            params.page = parseInt(params.page, 10) + 1;
+            makeAjax(repoConstants, params, callbackOnSuccess, callbackParams);
+        }
+    }
+
+    if(callCounter == trackCounter){
+        $(".loader").fadeOut(100, function(){
+            populateTable({
+                "all": countArray[0],
+                "lastDay": countArray[1],
+                "lastWeekButNotLastDay": parseInt(countArray[2],10) - parseInt(countArray[1],10),
+                "allButNotLastWeek": parseInt(countArray[0],10) - parseInt(countArray[2],10)
+            });
+        });
+    }
 }
 
 // on form submit function
@@ -71,40 +105,34 @@ function fetchIssues(thisForm, event){
     }
 
     var pathNameArray = el.pathname.split("/"); //Array of url pathparams
+    var repoConstants = {
+        "repoOwner" : pathNameArray[1],
+        "repoName" : pathNameArray[2]
+    };
 
     //time (in hours) since which the issues are being fetched
     var sinceTimeArray = [0, 24, 7*24]; // 0 implies all issues
-    var countArray = [], counter = 0;
+    var countArray = [0, 0, 0]; // initializing the array with zeroes
 
     sinceTimeArray.forEach(function(sinceTime, idx){
         var params = {
-            "since" : getSinceTimeInISO(sinceTime)
+            "page": 1,
+            "per_page": 100
+        };
+
+        if(sinceTime) {
+            params["since"] = getSinceTimeInISO(sinceTime);
+        }
+
+        var callbackParams = {
+            idx: idx,
+            countArray: countArray,
+            sinceTimeArray: sinceTimeArray,
+            repoConstants: repoConstants,
+            params: params
         };
 
         $(".loader").show();
-        makeAjax(pathNameArray[1], pathNameArray[2], params, function(data){
-            if(!data){
-                countArray[idx] = 0;
-            }
-
-            if(params.since == 0) {
-                countArray[idx] = data["open_issues_count"]; //fetching all open issues count
-                console.log(countArray[idx]);
-            } else {
-                countArray[idx] = validDataCount(data, params.since);
-                console.log(countArray[idx]);
-            }
-
-            if(idx == (sinceTimeArray.length - 1)){
-                $(".loader").fadeOut(100, function(){
-                    populateTable({
-                        "all": countArray[0],
-                        "lastDay": countArray[1],
-                        "lastWeekButNotLastDay": parseInt(countArray[2],10) - parseInt(countArray[1],10),
-                        "allButNotLastWeek": parseInt(countArray[0],10) - parseInt(countArray[2],10)
-                    });
-                });
-            }
-        });
+        makeAjax(repoConstants, params, callbackOnSuccess, callbackParams);
     });
 }
