@@ -34,14 +34,6 @@ function getSinceTimeInISO(fromTimeInHours){
     }
 }
 
-// filter out issues which are updated after since time and get issues which are created
-// before since time
-function validDataCount(data, sinceTime){
-    return data.filter(function(obj){
-        return new Date(obj["created_at"]).getTime() > new Date(sinceTime).getTime();
-    }).length;
-}
-
 function populateTable(data){
     for(var key in data) {
         $("table.results").find("td." + key).text(data[key]);
@@ -50,10 +42,10 @@ function populateTable(data){
 }
 
 function checkURLValidity(urlHostname){
-    if (!(urlHostname && (urlHostname == "www.github.com" || urlHostname == "github.com"))) {
-        return false;
+    if (urlHostname && (urlHostname == "www.github.com" || urlHostname == "github.com")) {
+        return true;
     }
-    return true;
+    return false;
 }
 
 // on form submit function
